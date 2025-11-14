@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carregando...</title>
+    
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#19003a"/>
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+
+    <script>
+        (function() {
+            let path = window.location.pathname;
+            let baseUrl = path.substring(0, path.lastIndexOf('/')) + '/';
+            document.write('<base href="' + baseUrl + '">');
+        })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    
+    <style id="dynamic-theme-styles">
+        :root {
+            --theme-primary: #ffeb3b;
+            --theme-secondary: #4a148c;
+            --theme-accent: #00bcd4;
+            --theme-success: #69F0AE;
+            --theme-danger: #f44336;
+        }
+    </style>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading-overlay" class="modal-overlay hidden" style="justify-content: center; align-items: center; z-index: 9999;">
+        <style>
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .spinner {
+                border: 8px solid rgba(255, 255, 255, 0.2);
+                border-top: 8px solid var(--theme-primary);
+                border-radius: 50%;
+                width: 60px;
+                height: 60px;
+                animation: spin 1s linear infinite;
+            }
+        </style>
+        <div class="spinner"></div>
+    </div>
+    <div id="ticker-wrap" class="hidden">
+        <div id="ticker-content"></div>
+    </div>
+
+    <div id="stars1" class="stars"></div>
+    <div id="stars2" class="stars"></div>
+
+    <div class="content-wrapper">
+
+        <div id="login-container" class="glass-container">
+            <img src="images/sua-logo.png" alt="Logomarca" id="logo">
+            <h2 id="form-title">Fazer Check-in para garantir recompensas</h2>
+            <span id="login-error"></span>
+            
+            <input type="text" id="login-id" placeholder="ID (8 caracteres)" maxlength="8">
+            <input type="email" id="login-email" placeholder="Seu E-mail" class="hidden" required>
+            
+            <input type="text" id="register-name" placeholder="Nome Completo" class="hidden">
+            <input type="email" id="register-email" placeholder="Seu E-mail" class="hidden" required>
+            
+            <label for="register-photo" class="file-input-label hidden">Foto de Perfil (Opcional):</label>
+            <input type="file" id="register-photo" class="hidden" accept="image/png, image/jpeg, image/gif">
+            
+            <label for="register-dob" class="file-input-label hidden">Data de Nascimento:</label>
+            <input type="date" id="register-dob" class="hidden" required>
+
+            <input type="password" id="login-password" placeholder="Senha">
+            
+            <input type="hidden" id="referral-id">
+
+            <div class="login-buttons">
+                <button id="login-button">Entrar</button>
+                <button id="register-button" class="hidden">Finalizar Cadastro</button>
+                <button id="forgot-password-button" class="hidden">Enviar Link</button>
+            </div>
+            
+            <span id="toggle-to-register" class="form-toggle">Não tem conta? Cadastre-se</span>
+            <span id="toggle-to-login" class="form-toggle hidden">Já tem conta? Entrar</span>
+            <span id="toggle-to-forgot" class="form-toggle">Esqueci minha senha</span>
+        </div>
+
+        <div id="app-container" class="hidden">
+            
+            <img id="profile-pic" src="" alt="Foto de Perfil" class="hidden">
+            <h1 id="main-title">Check-in de Coins</h1>
+            <h3 id="user-greeting" style="margin-bottom: 5px;"></h3>
+            
+            <div id="wallet-container" class="glass-container user-only hidden" style="padding: 15px 20px; gap: 5px; margin-bottom: 10px; max-width: 300px; background: rgba(255, 235, 59, 0.1);">
+                <span style="font-size: 0.9em; color: #d1c4e9;">Seu Saldo Total</span>
+                <span id="wallet-balance" style="font-size: 1.8em; color: var(--theme-primary); font-weight: bold;">0</span>
+                <button id="collect-balance-button" class="button-outline" disabled style="margin-top: 10px; font-size: 1em; padding: 10px;">
+                    Solicitar Saque (20.000)
+                </button>
+                <p id="collect-notice" class="hidden" style="font-size: 0.8em; color: #d1c4e9; margin: 5px 0 0 0;">
+                    Você pode solicitar seu saldo ao atingir 20.000 coins.
+                </p>
+            </div>
+
+            <div id="birthday-countdown-container" class="user-only hidden">
+                <p id="birthday-countdown-text"></p>
+            </div>
+            
+            <nav class="tab-nav main-nav">
+                <button class="tab-button user-only active" data-tab="tab-checkin">Check-in</button>
+                <button class="tab-button user-only" data-tab="tab-ranking">Ranking</button>
+                <button class="tab-button user-only" data-tab="tab-withdraw">Meus Saques<span id="withdraw-notification-dot" class="notification-dot hidden"></span></button>
+                <button class="tab-button user-only" data-tab="tab-referral">Indicação</button>
+                <button class="tab-button user-only" data-tab="tab-history">Histórico</button>
+                <button class="tab-button admin-only hidden" data-tab="tab-admin">Admin<span id="admin-notification-dot" class="notification-dot hidden"></span></button>
+            </nav>
+
+            <div class="tab-content main-content">
+                
+                <div id="tab-checkin" class="tab-panel user-only active">
+                    <p id="checkin-notice" style="margin-top: 0; margin-bottom: 20px;">
+                        O check-in reseta diariamente à meia-noite (00:00h).
+                    </p>
+                    <div id="streak-container" class="glass-container" style="padding: 15px 20px; gap: 10px; max-width: 300px;">
+                        <p id="streak-milestone-notice" style="margin: 0; font-size: 1.1em; color: var(--theme-primary); font-weight: bold;">Complete 7 dias para +5.000 Coins!</p>
+                        <div id="streak-progress-bar"></div>
+                        <p id="streak-weekly-notice" style="margin: 0; font-size: 0.9em; color: #d1c4e9;">Semana atual: (0/7)</p>
+                        <p id="countdown-timer" class="hidden" style="margin: 0; font-size: 1.1em; color: var(--theme-primary); font-weight: bold;"></p>
+                    </div>
+                    <div class="button-container" style="margin-bottom: 0;">
+                        <button id="checkin-button" disabled>Carregando...</button>
+                    </div>
+                </div>
+
+                <div id="tab-ranking" class="tab-panel user-only">
+                    <div id="leaderboard-container" class="glass-container" style="max-width: 300px; padding: 20px; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                        <h3>🏆 Top 10 Usuários</h3>
+                        <ul id="leaderboard-list">
+                            </ul>
+                    </div>
+                </div>
+                
+                <div id="tab-withdraw" class="tab-panel user-only">
+                    <div id="withdrawal-history-container" class="glass-container" style="max-width: 300px; padding: 20px; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                        <h3>Histórico de Saques</h3>
+                        <ul id="withdrawal-history-list">
+                            </ul>
+                    </div>
+                </div>
+                
+                <div id="tab-referral" class="tab-panel user-only">
+                    <div id="referral-info-container" class="glass-container" style="padding: 15px 20px; gap: 10px; margin: 0; max-width: 300px; background: rgba(0, 200, 83, 0.1); border: 1px solid var(--theme-success); border-radius: 20px;">
+                        <span id="referral-bonus-text" style="font-size: 1.0em; color: white;">Convide e ganhe <strong>10.000 coins!</strong></span>
+                        <span id="referral-welcome-text" style="font-size: 0.9em; color: #d1c4e9; margin-top: -10px;">Seu amigo se cadastra e ganha <strong>5.000 coins!</strong></span>
+                        <span style="font-size: 1em; color: white; margin-top: 10px;">Seu Link de Indicação:</span>
+                        <span id="referral-link-display" style=""></span>
+                        <span id="referral-link-display-help" style="font-size: 0.8em; color: #d1c4e9;">(Toque no link para copiar)</span>
+                    </div>
+                    
+                    <div id="referral-list-container" class="glass-container" style="background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                        <h3 id="referral-list-title">Meus Indicados</h3>
+                        <ul id="referral-list">
+                            </ul>
+                    </div>
+                </div>
+                
+                <div id="tab-history" class="tab-panel user-only">
+                    <div id="point-history-container" class="glass-container" style="max-width: 300px; padding: 20px; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                        <h3>Histórico de Coins</h3>
+                        <ul id="point-history-list">
+                            </ul>
+                    </div>
+                </div>
+                
+                <div id="tab-admin" class="tab-panel admin-only hidden">
+                    <nav class="tab-nav admin-nav" style="max-width: 300px; margin-left: auto; margin-right: auto;">
+                        <button class="tab-button active" data-tab="tab-admin-stats">Stats</button>
+                        <button class="tab-button" data-tab="tab-admin-users">Usuários</button>
+                        <button class="tab-button" data-tab="tab-admin-payments">Pagamentos<span id="payments-notification-dot" class="notification-dot hidden"></span></button>
+                        <button class="tab-button" data-tab="tab-admin-logs">Logs</button> 
+                        <button class="tab-button" data-tab="tab-admin-config">Config.</button>
+                    </nav>
+                    
+                    <div class="tab-content admin-content" style="max-width: 300px; margin: 0 auto;">
+                        
+                        <div id="tab-admin-stats" class="tab-panel active">
+                            <div id="admin-stats-container">
+                                <div class="stat-card">
+                                    <span class="stat-card-value" id="stat-total-users">0</span>
+                                    <span class="stat-card-label">Total de Usuários</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-card-value" id="stat-total-coins">0</span>
+                                    <span class="stat-card-label">Total de Coins</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-card-value" id="stat-checkins-today">0</span>
+                                    <span class="stat-card-label">Check-ins Hoje</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-card-value" id="stat-new-users-today">0</span>
+                                    <span class="stat-card-label">Novos Hoje</span>
+                                </div>
+                            </div>
+
+                            <div id="admin-chart-container">
+                                <canvas id="admin-chart-canvas"></canvas>
+                            </div>
+
+                        </div>
+                        
+                        <div id="tab-admin-users" class="tab-panel">
+                            <div class="glass-container" style="max-width: 300px; padding: 20px; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                                <h3>Gerenciar Usuários</h3>
+                                <input type="text" id="admin-search" placeholder="Buscar por ID ou Nome...">
+                                <ul id="admin-user-list">
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div id="tab-admin-payments" class="tab-panel">
+                            <div class="glass-container" style="max-width: 300px; padding: 20px; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                                <h3>Solicitações de Saque</h3>
+                                <ul id="admin-payment-list">
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div id="tab-admin-logs" class="tab-panel">
+                            <div class="glass-container" style="max-width: 300px; padding: 20px; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                                <h3>Logs de Auditoria (Ajustes)</h3>
+                                <ul id="admin-audit-log-list" style="list-style: none; padding: 0; margin: 15px 0 0 0; max-height: 350px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--theme-primary) var(--theme-secondary);">
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div id="tab-admin-config" class="tab-panel">
+                            <div class="glass-container admin-settings-form" style="max-width: 300px; padding: 20px; text-align: left; background: rgba(25, 0, 58, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;">
+                                <h3>Configurações do Sistema</h3>
+                                
+                                <div class="form-group">
+                                    <label for="setting-logo-upload">Logomarca do App (PNG, JPG, SVG)</label>
+                                    <img src="images/sua-logo.png" id="logo-preview" alt="Prévia da Logo">
+                                    <input type="file" id="setting-logo-upload" accept="image/png, image/jpeg, image/svg+xml, image/gif">
+                                    <span id="upload-logo-status" style="font-size: 0.9em; min-height: 1.2em;"></span>
+                                </div>
+                                
+                                <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+                                
+                                <div class="form-group">
+                                    <label for="setting-announcement_message">Anúncio Global (deixe em branco para desativar)</label>
+                                    <input type="text" id="setting-announcement_message">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="setting-admin_whatsapp_number">Nº WhatsApp do Admin (p/ Notificações)</label>
+                                    <input type="text" id="setting-admin_whatsapp_number" placeholder="55119... (só números)">
+                                </div>
+
+                                <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+                                
+                                <h3>Bônus e Recompensas</h3>
+                                <div class="form-group">
+                                    <label for="setting-bonus_checkin">Coins por Check-in</label>
+                                    <input type="number" id="setting-bonus_checkin">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_streak">Bônus de 7 Dias (Coins)</label>
+                                    <input type="number" id="setting-bonus_streak">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_referral">Bônus por Indicar (Coins)</label>
+                                    <input type="number" id="setting-bonus_referral">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_welcome">Bônus de Boas-Vindas (Coins)</label>
+                                    <input type="number" id="setting-bonus_welcome">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_birthday">Bônus de Aniversário (Coins)</label>
+                                    <input type="number" id="setting-bonus_birthday">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-collection_threshold">Valor do Saque (Coins)</label>
+                                    <input type="number" id="setting-collection_threshold">
+                                </div>
+
+                                <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+                                <h3>Marcos de Conquista (Gamificação)</h3>
+                                <div class="form-group">
+                                    <label for="setting-bonus_checkin_30">Bônus: 30 Check-ins (Totais)</label>
+                                    <input type="number" id="setting-bonus_checkin_30" placeholder="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_checkin_60">Bônus: 60 Check-ins (Totais)</label>
+                                    <input type="number" id="setting-bonus_checkin_60" placeholder="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_referral_5">Bônus: 5 Indicações (Totais)</label>
+                                    <input type="number" id="setting-bonus_referral_5" placeholder="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-bonus_referral_10">Bônus: 10 Indicações (Totais)</label>
+                                    <input type="number" id="setting-bonus_referral_10" placeholder="0">
+                                </div>
+                                <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+                                <h3>Branding e Aparência</h3>
+                                
+                                <div class="form-group">
+                                    <label for="setting-appName">Nome do App</label>
+                                    <input type="text" id="setting-appName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="setting-copyright_holder">Rodapé Copyright</label>
+                                    <input type="text" id="setting-copyright_holder">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Cor Primária (Destaques)</label>
+                                    <div class="color-input-group">
+                                        <input type="color" id="setting-color-picker-primary">
+                                        <input type="text" id="setting-color-text-primary">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cor Secundária (Botões)</label>
+                                    <div class="color-input-group">
+                                        <input type="color" id="setting-color-picker-secondary">
+                                        <input type="text" id="setting-color-text-secondary">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cor de Acento (Check-in)</label>
+                                    <div class="color-input-group">
+                                        <input type="color" id="setting-color-picker-accent">
+                                        <input type="text" id="setting-color-text-accent">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cor de Sucesso (Indicação)</label>
+                                    <div class="color-input-group">
+                                        <input type="color" id="setting-color-picker-success">
+                                        <input type="text" id="setting-color-text-success">
+                                    </div>
+                                </div>
+                                
+                                <button id="save-settings-button" style="margin-top: 10px;">Salvar Configurações</button>
+                                <span id="save-settings-status" style="font-size: 0.9em; min-height: 1.2em;"></span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+            </div> <button id="logout-button">Sair</button>
+            
+            <button id="install-pwa-button" class="button-outline hidden" style="max-width: 300px; margin-left: auto; margin-right: auto; font-size: 1em; padding: 10px;">
+                Instalar App no Celular
+            </button>
+        </div> 
+        
+        <div id="reset-password-container" class="glass-container hidden">
+            <img src="images/sua-logo.png" alt="Logomarca" id="logo-reset" class="logo">
+            <h2>Redefinir sua Senha</h2>
+            <span id="reset-error" style="color: #ffcdd2; font-size: 0.9em; min-height: 1.2em;"></span>
+            
+            <input type="hidden" id="reset-token">
+            
+            <label for="reset-new-password" class="file-input-label">Nova Senha:</label>
+            <input type="password" id="reset-new-password" placeholder="Digite sua nova senha">
+            
+            <label for="reset-confirm-password" class="file-input-label">Confirme a Nova Senha:</label>
+            <input type="password" id="reset-confirm-password" placeholder="Confirme a nova senha">
+
+            <div class="modal-buttons">
+                <button id="reset-password-button">Salvar Nova Senha</button>
+            </div>
+        </div>
+        
+        
+        <div id="result-container" class="glass-container hidden">
+            <p id="result-message"></p>
+            <img id="generated-share-image" src="" alt="Coleta de Coins" class="hidden">
+            <div id="result-actions" class="hidden">
+                <a id="whatsapp-share-button" href="#" target="_blank">
+                    <svg height="24" width="24" viewBox="0 0 32 32" fill="white"><path d="M16 2.001A13.999 13.999 0 002 16c0 4.237 1.886 8.002 4.96 10.605L2 30l3.532-4.71A13.93 13.93 0 0016 29.999a13.999 13.999 0 000-27.998zM23.636 21.316c-.275-.14-1.62-.797-1.871-.887-.251-.09-.434-.14-.617.14-.183.279-.708.887-.869 1.066-.16.179-.321.2-.596.06-.275-.14-1.16-.426-2.21-1.353-1.05-.927-1.756-2.072-2.046-2.427-.291-.355-.031-.548.11-1.218.127-.611.251-.154.376-.234.125-.08.251-.14.376-.234.125-.09.188-.21.281-.35s.094-.279.047-.399c-.047-.12-.617-1.476-.844-2.021-.227-.545-.454-.47-.617-.478-.15-.008-.321-.01-.492-.01-.17 0-.445.06-.672.309-.227.249-.869.84-1.066 2.021s.219 2.213.251 2.373a12.02 12.02 0 002.211 4.482 19.34 19.34 0 005.156 4.108c1.32.561 2.49.501 3.27.47.854-.03 1.62-.797 1.847-1.566.227-.77.227-1.428.156-1.567-.069-.14-.24-.229-.515-.37z"></path></svg>
+                    Compartilhar
+                </a>
+                <button id="reset-button">Ok</button>
+            </div>
+        </div>
+        
+        <div id="edit-profile-container" class="glass-container hidden">
+            <h2>Editar Perfil</h2>
+            <span id="edit-profile-error"></span>
+            <label for="edit-photo" class="file-input-label">Alterar Foto (Opcional):</label>
+            <input type="file" id="edit-photo" accept="image/png, image/jpeg, image/gif">
+            <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+            <label for="edit-current-password" class="file-input-label" style="margin-top: 10px;">Para alterar a senha, digite a atual:</label>
+            <input type="password" id="edit-current-password" placeholder="Senha Atual">
+            <input type="password" id="edit-new-password" placeholder="Nova Senha (deixe em branco para não alterar)">
+            <div class="edit-buttons">
+                <button id="save-profile-button">Salvar Alterações</button>
+                <button id="close-profile-button" class="button-outline">Cancelar</button>
+            </div>
+        </div>
+
+    </div> <div id="edit-user-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="edit-user-title">Editar Usuário</h2>
+            <span id="edit-user-error" style="color: #ffcdd2; font-size: 0.9em;"></span>
+            <input type="hidden" id="edit-user-db-id">
+            
+            <label for="edit-user-name" class="file-input-label">Nome:</label>
+            <input type="text" id="edit-user-name">
+            
+            <label for="edit-user-dob" class="file-input-label">Data de Nascimento:</label>
+            <input type="date" id="edit-user-dob">
+            
+            <label for="edit-user-new-password" class="file-input-label">Definir Nova Senha (Opcional):</label>
+            <input type="text" id="edit-user-new-password" placeholder="Deixe em branco para não alterar">
+            
+            <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+            
+            <label for="edit-user-current-points" class="file-input-label">Saldo Atual: <span id="edit-user-current-points-display" style="color: #fff; font-weight: bold;">0</span></label>
+            <label for="edit-user-adjustment-amount" class="file-input-label">Valor do Ajuste (ex: 5000 ou -2000):</label>
+            <input type="number" id="edit-user-adjustment-amount" placeholder="0">
+            
+            <label for="edit-user-adjustment-reason" class="file-input-label">Motivo do Ajuste (Obrigatório se alterar saldo):</label>
+            <input type="text" id="edit-user-adjustment-reason" placeholder="Ex: Bônus manual">
+            
+            <hr style="border: 1px solid rgba(255, 255, 255, 0.1); width: 100%;">
+
+            <button id="delete-user-button" class="button-danger" style="font-size: 1em; padding: 10px;">Desativar Usuário</button>
+
+            <div class="modal-buttons">
+                <button id="save-user-button">Salvar</button>
+                <button id="close-modal-button" class="button-outline">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="birthday-modal" class="modal-overlay user-only hidden">
+        <div class="modal-content" style="background: rgba(255, 235, 59, 0.15); border-color: var(--theme-primary); max-width: 300px; padding: 20px;">
+            <span style="font-size: 1.8em; color: var(--theme-primary); font-weight: bold; line-height: 1.2;">🎉 Feliz Aniversário! 🎉</span>
+            <p style="font-size: 1em; color: #fff; margin: 10px 0 0 0;">Que seu dia seja tão brilhante quanto as estrelas. Você é uma SuperStar!</p>
+            
+            <button id="birthday-claim-button" style="margin-top: 15px; animation: pulse-yellow 1.5s infinite;">
+                Resgatar 50.000 Coins!
+            </button>
+            
+            <button id="birthday-modal-close-button" class="button-outline" style="font-size: 1em; padding: 10px;">Fechar</button>
+        </div>
+    </div>
+    
+    <div id="alert-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="alert-modal-title" style="margin: 0;">Aviso</h2>
+            <p id="alert-modal-message" style="color: #fff; font-size: 1em; line-height: 1.4; margin: 10px 0;"></p>
+            <div class="modal-buttons">
+                <button id="alert-modal-close-button">OK</button>
+            </div>
+        </div>
+    </div>
+
+
+    <footer id="copyright-footer">
+        &copy; 2025 Copyright feito por <a href="https://painel.agency" target="_blank">painel.agency</a> SuperStar
+    </footer>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
